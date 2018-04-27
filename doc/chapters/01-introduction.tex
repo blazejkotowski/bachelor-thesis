@@ -1,0 +1,37 @@
+\chapter{Introduction}
+
+\section{Motivation}
+
+Majority of communications in modern age are carried through electromagnetic waves. However, this is not the only possible medium of communication.
+The ubiquity of cheap audio equipment, like loudspeakers and microphones, creates a possibility for data transmission via sound.
+
+Unlike electromagnetic waves, a range of sound pressure waves can be perceived by humans. This creates an issue when one does not want listeners to be aware that data is transmitted.
+A way of solving this problem is insetting the data signal into a host sound in a specially crafted manner, exploiting the properties of human auditory system.
+The host sound should mask the data signal, making it imperceptible to humans, while still detectable by machines.
+
+As sound production, transmission and recording is commonplace, such system would have many applications, some of which are discussed in Chapter \ref{chap:summary}.
+
+\section{Thesis Objective}
+
+This work aims at achieving the following goals:
+
+\begin{itemize}
+  \item implementation of software system for insetting and recovery of data in host audio signal
+  \item evaluation of implemented system with regard to criteria of transmission robustness and distortion imperceptibility.
+\end{itemize}
+
+The system should take existing audio file, like a piece of music, and data to be transmitted, and combine them to generate a sound to be played by loudspeakers.
+This sound should be as close to original audio as possible, i.e. the human listener should not be able to perceive the distortion introduced by hiding the payload data.
+On the receiving side, another program should be able to recover the payload from recorded sound.
+
+\section{Thesis Outline}
+
+\begin{itemize}
+  \item Chapter 2 gives a brief overview of the theoretical concepts required for the solution, focusing on digital signal processing concepts as well as communications and coding techniques
+  \item Chapter 3 describes the proposed solution of the problem
+  \item In Chapter 4, implementation details of the system are presented, including relevant excerpts of python source code
+  \item Chapter 5 presents results of experimental evaluations, outlining system's performance in various conditions
+  \item Finally, Chapter 6 sums up the work, including possible applications of the system, as well as identifying possible areas for improvement.
+\end{itemize}
+
+For purposes of this thesis, Błażej Kotowski is responsible for implementation and experimental evaluation. Tomasz Pewiński is responsible for designing a solution and implementation.

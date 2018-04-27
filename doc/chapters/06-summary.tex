@@ -1,0 +1,65 @@
+\chapter{Summary}
+\label{chap:summary}
+
+The thesis presents a solution for insetting and recovery of data in sound in imperceptible way, as well as
+implementation of the solution.
+
+The solution is shown to allow a robust transmission in presence of interference (in laboratory conditions) and to be
+imperceptible to human listeners (See \ref{sec:psychoacoustic-test}).
+
+\section{Possible applications}
+
+The python library developed as a part of this thesis can be utilized on many platforms that support python programming language.
+
+Example applications might include:
+
+\begin{enumerate}
+\item In marketing -- embedding data in advertisements.
+
+Data like product details or promotional coupons could be hidden in advertisement music. Consumers would be able to
+extract and use this data using smartphone application.
+
+\item In broadcasting -- embedding meta-data in music.
+
+Meta-data like artist name, song title or even song lyrics could be hidden in music broadcasted on live events.
+Listeners would be able to access it using mobile application.
+
+\item In digital rights management -- a simple watermark.
+
+Watermark data could be hidden in music or film score to detect copyright infringement. The disadvantage of presented
+solution is ease of watermark removal.
+\end{enumerate}
+
+\section{Possible improvements}
+
+\begin{itemize}
+\item Increase data bandwidth
+
+Transmission bandwidth achieved in the implemented solution might limit the number of applications.
+Bandwidth could be increased by decreasing single byte transmission duration and using phase recovery method
+less susceptible to noise.
+
+\item Improve frame recovery algorithm
+
+Implemented frame recovery algorithm is shown to fail to correctly detect a frame in some conditions (see~\ref{subsub:frame-detection}).
+This could be improved by using longer preamble or another method for synchronizing frames.
+
+\item Evaluation in real-life conditions
+
+The tests in Chapter \ref{chap:tests} are performed in laboratory conditions. Additional tests should be
+performed to evaluate the system's performance in presence of natural phenomena (like echoes) and using commodity hardware.
+
+\item Advanced psychoacoustic model
+
+Another psychoacoustic model might be implemented, exploiting additional properties of human auditory system, like
+temporal masking~(\ref{itm:masking-effects}).
+
+\item Implementation of mobile application
+
+A showcase application for easy broadcasting and receiving of data, running on any of major mobile operating systems.
+\end{itemize}
+
+\section{Acknowledgments}
+
+Authors would like to thank prof.~dr. hab.~inż~Adam Dąbrowski and dr. Szymon Drgas for support in designing a solution,
+and dr.~inż. Andrzej Meyer for help with laboratory and audio equipment.

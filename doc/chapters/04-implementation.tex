@@ -1,0 +1,304 @@
+\chapter{Implementation}
+
+\section{Programming environment}
+
+The solution is implemented in python programming language. Python was chosen because of authors' previous experience with it, ease of programming and prototyping, and availability of digital signal processing and utility libraries.
+
+Following python libraries are used:
+
+\begin{itemize}
+  \item numpy -- math and array manipulation library
+  \item scipy -- digital signal processing algorithms
+  \item matplotlib -- graphing
+  \item reedsolo -- implementation of Reed-Solomon code
+  \item pyaudio -- playing and recording sound
+\end{itemize}
+
+Main result of work is a python library, with few dependencies, which is portable and can be used in many applications (some are discussed in the~\nameref{chap:summary} chapter)
+
+\section{Outline of implementation}
+
+The library consists of core emitter and receiver modules, as well as several other additional modules.
+
+Emitter and receiver are meant to be used separately each for its own application, and are orthogonal
+to sound playing/recording concerns. This makes them portable across platforms that support python programming language.
+Only configuration parameters (synchronization and carrier frequency values) must be shared between receiver and emitter.
+
+\clearpage
+
+\section{Emitter}
+
+Emitter class implements synthesis algorithm described in chapter \ref{chap:solution}. With emitter object, an application can obtain samples of host sound with payload data hidden in it.
+
+Public methods:
+
+\begin{itemize}
+\item \verb|Emitter(host, sample_rate, sync_frequency, carrier_frequencies, payload)|
+
+  Constructor
+
+  Arguments:
+  \begin{itemize}
+  \item \verb|host| -- sampled host signal (\verb|numpy.float32| array)
+  \item \verb|sample_rate| -- sampling rate of host signal (\verb|float|)
+  \item \verb|sync_frequency| -- synchronization frequency in Hertz (\verb|float|)
+  \item \verb|carrier_frequencies| -- list of carrier frequencies in Hertz (list of eight \verb|float|)
+  \item \verb|payload| -- bytes to be transmitted (list of \verb|int|)
+  \end{itemize}
+
+  Return value: \verb|emitter|
+  \begin{itemize}
+  \item \verb|emitter| -- instance of Emitter
+  \end{itemize}
+
+\item \verb|outstream(buf)|
+
+  When this method is called, emitter will start putting chunks of synthesized samples on the \verb|buf| queue. The caller can then forward these samples to hardware loudspeakers.
+
+  Putting \verb|False| boolean on the queue signals end of synthesized signal.
+
+  Arguments:
+  \begin{itemize}
+  \item \verb|buf| -- FIFO queue for putting chunks of synthesized sound on (python \verb|Queue|)
+  \end{itemize}
+
+  Return value: \verb|buf|
+  \begin{itemize}
+  \item \verb|buf| -- the same as first argument.
+  \end{itemize}
+
+\end{itemize}
+
+See Figure \ref{fig:emitter-application} for example usage of emitter in an application.
+
+\begin{figure}[h]
+\centering
+\inputminted[linenos]{python}{listings/emitter_example.py}
+\caption{Example usage of emitter in an application}
+\label{fig:emitter-application}
+\end{figure}
+
+\clearpage
+
+\section{Receiver}
+
+Receiver class implements analysis algorithm described in chapter \ref{chap:solution}. With receiver object, an application can decode payload data from recorded sound samples.
+
+Public methods:
+
+\begin{itemize}
+\item \verb|Receiver(instream, sample_rate, sync_frequency, carrier_frequencies)|
+
+  Constructor
+
+  Arguments:
+  \begin{itemize}
+  \item \verb|instream| -- queue for incoming recorded samples (python \verb|Queue|)
+  \item \verb|sample_rate| -- sampling rate (\verb|float|)
+  \item \verb|sync_frequency| -- synchronization frequency in Hertz (\verb|float|)
+  \item \verb|carrier_frequencies| -- list of carrier frequencies in Hertz (list of eight \verb|float|)
+  \end{itemize}
+
+  Return value: \verb|receiver|
+  \begin{itemize}
+  \item \verb|receiver| -- instance of Receiver
+  \end{itemize}
+
+\item \verb|payload_stream(outstream)|
+
+  After calling this method, decoded bytes of data will be put on the queue.
+
+  Putting \verb|False| boolean on the queue means end of decoded data.
+
+  Arguments:
+  \begin{itemize}
+  \item \verb|outstream| -- FIFO queue for putting decoded bytes on (python \verb|Queue|)
+  \end{itemize}
+
+  Return value: \verb|outstream|
+  \begin{itemize}
+  \item \verb|outstream| -- the same as first argument.
+  \end{itemize}
+
+\end{itemize}
+
+See Figure~\ref{fig:receiver-application} for example usage of receiver in an application.
+
+\clearpage
+
+\begin{figure}[h]
+\centering
+\inputminted[linenos]{python}{listings/receiver_example.py}
+\caption{Example usage of receiver in an application}
+\label{fig:receiver-application}
+\end{figure}
+
+\section{Other modules}
+
+\subsection{Encoder}
+
+This sub-module implements \emph{encoding} block from Figure~\ref{fig:solution-diagram}.
+
+Encoder is responsible for splitting the payload data into frames (adding preamble, calculating Reed-Solomon error correction) and outputting stream of bits ready for transmission. In case payload data cannot be split evenly into frames, it is zero-padded to required length.
+
+Public methods:
+
+\begin{itemize}
+\item \verb|Encoder(payload)|
+
+  Constructor
+
+  Arguments:
+  \begin{itemize}
+  \item \verb|payload| -- data to be encoded (list of \verb|int|)
+  \end{itemize}
+
+  Return value: \verb|encoder|
+  \begin{itemize}
+  \item \verb|encoder| -- instance of Encoder
+  \end{itemize}
+
+\item \verb|encode()|
+
+  Encodes payload into stream of bytes ready for transmission.
+
+  Arguments: none
+
+  Return value: \verb|out|
+  \begin{itemize}
+  \item \verb|out| -- encoded bytes (list of \verb|int|)
+  \end{itemize}
+
+\end{itemize}
+
+See Figure~\ref{fig:encoder-example} for example usage in code.
+
+\begin{figure}[p]
+\centering
+\inputminted[linenos]{python}{listings/encoder_example.py}
+\caption{Usage of encoder}
+\label{fig:encoder-example}
+\end{figure}
+
+\subsection{Decoder}
+
+This sub-module implements \emph{frame recovery} block from Figure~\ref{fig:solution-diagram}.
+
+Decoder is a stateful object responsible for scanning incoming stream of data, extracting correct frames (see~\ref{sec:frame-recovery}), applying error correction code and outputting decoded payload data.
+
+Public methods:
+
+\begin{itemize}
+\item \verb|Decoder()|
+
+  Constructor
+
+  Arguments: none
+
+  Return value: \verb|decoder|
+  \begin{itemize}
+  \item \verb|decoder| -- instance of Decoder
+  \end{itemize}
+
+\item \verb|add(byte)|
+
+  Registers incoming byte in decoder
+
+  Arguments:
+  \begin{itemize}
+  \item \verb|byte| -- incoming byte (\verb|int|)
+  \end{itemize}
+
+  Return value: none
+
+\item \verb|can_decode()|
+
+  Arguments: none
+
+  Return value: \verb|can|
+  \begin{itemize}
+  \item \verb|can| -- \verb|True| if decoder has enough bytes to decode a frame. Otherwise \verb|False|
+  \end{itemize}
+
+\item \verb|decode()|
+
+  Decodes payload data from incoming bytes
+
+  Arguments: none
+
+  Return value: \verb|(bytes, frame_count)|
+  \begin{itemize}
+  \item \verb|bytes| -- list of decoded payload bytes (list of \verb|int|)
+  \item \verb|frame_count| -- how many frames were decoded (\verb|int|)
+  \end{itemize}
+\end{itemize}
+
+See Figure~\ref{fig:decoder-example} for example usage in code.
+
+\begin{figure}[p]
+\centering
+\inputminted[linenos]{python}{listings/decoder_example.py}
+\caption{Usage of decoder}
+\label{fig:decoder-example}
+\end{figure}
+
+\subsection{Goertzel}
+
+This sub-module implements Goertzel algorithm generalized to non-integer multiple of fundamental frequency, as described in~\cite{PS12}.
+
+Public methods:
+\begin{itemize}
+\item \verb|goertzel(x, k)|
+
+  Calculates spectral component \verb|k| of signal \verb|x|.
+
+  Frequency of component can be calculated as \verb|k * fs / N| where \verb|fs| is sampling rate, and \verb|N| is length of \verb|x|.
+
+  Arguments:
+  \begin{itemize}
+  \item \verb|x| -- signal (list of \verb|float|/\verb|complex| numbers)
+  \item \verb|k| -- spectral component index (\verb|float|)
+  \end{itemize}
+
+  Return value: \verb|y|
+  \begin{itemize}
+  \item \verb|y| -- spectral component (\verb|complex| number)
+  \end{itemize}
+\end{itemize}
+
+\subsection{Psychoacoustic analyzer}
+
+This sub-module implements \emph{psychoacoustic model} described in~\ref{subsec:psychoacoustic-model}.
+
+Public methods:
+
+\begin{itemize}
+\item \verb|masking_threshold(x, f, fs)|
+
+  For given chunk of sound and frequency, this method calculates masking threshold under which components with
+  given frequency are inaudible.
+
+  Arguments:
+  \begin{itemize}
+  \item \verb|x| -- signal to calculate masking threshold for (list of \verb|float|)
+  \item \verb|f| -- frequency to calculate masking threshold for (\verb|float|)
+  \item \verb|fs| -- sampling rate (\verb|float|)
+  \end{itemize}
+
+  Return value: \verb|threshold|
+  \begin{itemize}
+  \item \verb|threshold| -- masking threshold for frequency \verb|f| in sound \verb|x| (\verb|float|)
+  \end{itemize}
+\end{itemize}
+
+\subsection{Graphing utilities}
+
+The system includes graphing sub-module that can optionally plug into receiver module and plot phase readings, bit synchronization, and frame synchronization moments (see Figure~[\ref{fig:graph-utility}]).
+This module has capability to plot values after all payload data was received as well as in real time.
+
+\begin{figure}[p]
+  \centering
+  \includegraphics[width=\linewidth]{figures/graph_example}
+  \caption{An example screen of graph utility}
+  \label{fig:graph-utility}
+\end{figure}

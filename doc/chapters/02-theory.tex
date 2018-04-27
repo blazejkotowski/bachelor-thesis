@@ -1,0 +1,382 @@
+\chapter{Theory}
+
+This chapter presents definitions and concepts used in latter parts of the thesis.
+
+\section{Spectral analysis}
+
+Spectral analysis is concerned with decomposing signals into sums of simple trigonometric functions. In signal processing applications, it allows for easy detection of individual components of a waveform.
+
+There exist many methods for spectral analysis. In this section, methods most often used in audio applications are presented.
+
+\subsection{Discrete Fourier Transformation}
+\label{subsec:dft}
+Discrete Fourier Transformation (DFT) is a method of transforming discrete, periodic, complex signals from time-domain representation into spectral representation~\cite{DiscreteDSP}.
+
+An input $x$ of $N$ complex values is transformed into output $X$ of $N$ complex values according to formula \ref{eq:dft}.~\cite{JOSDFT}
+
+\begin{equation}
+\label{eq:dft}
+X_{k} = \sum_{n = 0}^{N-1} x_{n}\cdot {\textrm{e}}^{-\jmath 2\pi kn/N}, k = 0, 1, 2, ..., N - 1
+\end{equation}
+
+The phase and magnitude of each frequency component $k$ are, respectively, absolute value and argument of complex number $X_{k}$:
+
+\begin{equation}
+\textrm{mag}_{k} = |X_k|
+\end{equation}
+
+\begin{equation}
+\varphi_{k} = \textrm{arg}(X_k)
+\end{equation}
+
+Inverse operation to DFT is also possible, transforming spectrum $X$ back to the signal $x$.
+
+In practical applications, $x$ consists of real numbers. In such case, $X$ obeys a symmetry~\ref{eq:real-dft-symmetry}.
+
+\begin{equation}
+\label{eq:real-dft-symmetry}
+X_{N-k} = X_{k}^{*}
+\end{equation}
+
+(where $*$ is complex conjugation)
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\linewidth]{figures/real-dft}
+  \caption[Magnitude and phase computed from DFT]{Magnitude and phase computed from DFT of 100 samples of 10\,Hz sine signal, sampled at 100 samples/second.\newline Symmetry from~(\ref{eq:real-dft-symmetry}) can be observed.}
+  \label{fig:real-dft}
+\end{figure}
+
+\subsection{Fast Fourier Transformation}
+\label{subsec:fft}
+
+Fast Fourier Transformation (FFT) is an implementation of discrete Fourier transformation.
+
+Computing DFT in naive way has $O(n^{2})$ complexity, which is often too much for practical applications.
+FFT algorithms improve that significantly -- the most popular one, Cooley-Turkey FFT, achieves $O(n\log{n})$~\cite{JOSDFT}.
+
+FFT is widely used in digital signal processing for its speed and ease of use.
+
+\subsection{Goertzel algorithm}
+\label{subsec:goertzel}
+
+Goertzel algorithm can be used to obtain magnitude and phase of single frequency component of a signal~\cite{PS12}.
+
+It is more computationally effective than FFT when only few components need to be extracted. Its main application is in
+Dual-Tone Multi-Frequency (DTMF) telephone tone dialing, where pairs of different frequency signals are transmitted to encode symbols and letters~\cite{DTMF}.
+
+Goertzel algorithm effectively computes a $k$-th coefficient of the DFT (see equation~\ref{eq:dft}).
+
+\begin{figure}[h]
+\centering
+\inputminted[linenos]{python}{listings/goertzel.py}
+\caption{Goertzel algorithm implemented in python}
+\label{fig:goertzel-python}
+\end{figure}
+
+Both DFT and Goertzel algorithm can only compute exact values for frequency components being $\delta f$\,Hz apart~(\ref{eq:dft-bin}).
+
+\begin{equation}
+\label{eq:dft-bin}
+\delta f = \frac{\textrm{fs}}{N}
+\end{equation}
+
+(where $\textrm{fs}$ is sampling frequency and $N$ is length of the signal)
+
+In case of frequency components not corresponding exactly to integer multiples of $\delta f$, values in adjacent DFT bins are affected -- this is called spectral leakage.~\ref{fig:spectral-leakage}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{figures/spectral-leakage}
+  \caption[Spectral leakage in magnitude spectrum]{Spectral leakage observed in top spectrum for $f_{1} = \textrm{25\,Hz}$. Contrasted with bottom spectrum of $f_{2} = \textrm{24\,Hz}$ ($\textrm{fs} = \textrm{100\,Hz}, N = 50, \delta f = \textrm{2\,Hz}$).}
+  \label{fig:spectral-leakage}
+\end{figure}
+
+For DTMF applications of Goertzel algorithm, a value of $N = 205$ is commonly used -- that value minimizes deviations of signaling frequencies from integer multiples of $\delta f$, thus minimizing the effect of spectral leakage~\cite{DTMF}.
+
+However, Goertzel algorithm can also be generalized for non-integer multiples of $\delta f$~\cite{PS12}.
+
+\section{Filtering}
+
+Filtering is a process of removing unwanted components from a signal. Filtering is possible in analog (continuous) as well as digital (discrete) domains~\cite{DSPGuide}.
+There are two types of digital filters: Finite Impulse Response (FIR) and Infinite Impulse Response (IIR).
+
+A FIR filter is defined by its impulse response $b_i$ (list of coefficients of size $N$). It is applied to a signal $x$ by convolving it with $b$:
+
+\begin{equation}
+y_{n} = \sum_{i = 0}^{N} b_{i}\cdot x_{n-i}
+\end{equation}
+
+FIR filters, as opposed to IIR filters, do not require feedback and are inherently stable. Their main disadvantage is high computational requirements.
+
+\subsection{Bandpass filter}
+
+A bandpass filter is a type of filter that passes frequencies within a certain range and attenuates frequencies outside that range~\cite{JOSFilters}.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\linewidth]{figures/bandpass-filter}
+  \caption[Effect of a bandpass filter]{Spectrum of white noise and noise filtered with bandpass filter with range 8--12\,kHz}
+  \label{fig:bandpass}
+\end{figure}
+
+Bandpass filters have many applications, for example in wireless receivers -- where they are used to remove part of the signal outside transmission's frequency band.
+
+\subsection{Bandstop filter}
+
+Bandstop filter can be thought of as the inverse of bandpass filter -- it attenuates frequencies within a certain range and passes frequencies outside that range~\cite{JOSFilters}.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\linewidth]{figures/bandstop-filter}
+  \caption[Effect of a bandstop filter]{Spectrum of white noise and noise filtered with bandstop filter with range 8--12\,kHz}
+  \label{fig:bandstop}
+\end{figure}
+
+One example of bandstop filter's application is removing the hum of 60\,Hz alternating current power line in audio systems.
+
+\section{Modulation}
+
+Modulation means changing properties of one signal (carrier signal) with another signal (modulating signal).
+
+Reverse process, called demodulation, can be applied to extract modulating signal from the modulated waveform.
+If modulating signal carries some kind of meaningful information, the modulation-demodulation process can be used for data transmission.
+
+There are many types of modulation, both analog and digital. Examples of analog modulation include:
+
+\begin{itemize}
+\item Amplitude Modulation (AM) -- modulating signal changes carrier's amplitude (Figure~\ref{fig:am})
+\item Frequency Modulation (FM) -- modulating signal changes instantaneous frequency of carrier
+\end{itemize}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\linewidth]{figures/am}
+  \caption[Amplitude modulation]{Amplitude modulation -- 1\,Hz sine (top) modulating the amplitude of 20\,Hz sine (bottom)}
+  \label{fig:am}
+\end{figure}
+
+\subsection{Phase Shift Keying}
+
+Phase Shift Keying (PSK) is a type of digital modulation. In case of PSK, the modulating signal is a stream of bits, and modulation process varies the phase of carrier signal.
+
+The demodulator must have access to reference signal to compare its phase value to incoming signal's. However, schemes without reference signal are also possible -- in this case
+change of phase in modulated signal itself is used to convey information -- this is called differential phase shift keying.
+
+PSK is widely used in digital communications, for example in Wi-Fi and RFID. % TODO: source
+
+\subsection{Differential Binary Phase Shift Keying}
+\label{subsec:dbpsk}
+
+DBPSK is a type of differential phase shift keying where phase shifts of $0$ and $\pi$ are used (hence "binary"). In most schemes, phase change of $\pi$ encodes binary $1$
+and no phase change encodes binary $0$ (see Figure~\ref{fig:dbpsk}). DBPSK does not require reference signal for demodulator.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\linewidth]{figures/dbpsk}
+  \caption[Differential binary phase shift keying]{Differential binary phase shift keying. Source: \url{http://en.wikipedia.org}}
+  \label{fig:dbpsk}
+\end{figure}
+
+\clearpage
+
+\section{Channel coding}
+
+Channel coding (also called forward error correction) is a method of detecting and\,/\,or correcting errors in transmission over noisy channel.
+It is accomplished by adding redundant data to original message, which allows the receiver to detect errors anywhere in the message.
+
+Advantage of using forward error correction is that it allows correcting errors without need for re-transmission.
+However, this comes at a cost of decreased effective data bandwidth, since redundant data (error correcting code) must also be transmitted.
+
+Two types of error correcting codes can be considered:
+
+\begin{itemize}
+\item block codes -- requires message to be of fixed length
+\item convolutional codes -- work on streams of data of any length
+\end{itemize}
+
+Forward error correction is widely used in mass storage applications for dealing with corrupted data, as well as in modems.
+
+\subsection{Reed-Solomon code}
+\label{subsec:reedsolomon}
+
+Reed-Solomon code is an example of block forward error correction code. This code of size $t$ can correct up to $\lfloor t/2\rfloor$ errors in received message~\cite{ReedSolo}.
+
+% TODO: describe reedsolo in more detail
+
+Reed-Solomon codes are used in mass storage, like CD and DVD standards, and QR codes~\cite{ReedSoloApplications}.
+
+\section{Psychoacoustics}
+
+Psychoacoustics can be described as branch of science studying perception of sound. Its applications range from sound compression algorithms to music therapy.
+
+\subsection{Human auditory system}
+\label{subsec:human-auditory}
+
+Most frequently quoted range of human hearing is 20\,Hz -- 20\,kHz~\cite{HearPsych}.
+However, the upper bound tends to decrease with age, and is 16\,kHz for typical adult.
+
+Human Auditory System (HAS) exhibits many properties studied by psychoacoustics. Among most prominent are:
+
+\begin{enumerate}
+\item Amplitude of the sound does not correspond linearly to perception of loudness for different frequencies. Equal loudness contour from figure \ref{fig:equal-loudness} is obtained experimentally and shows increased sensitivity around 3--4\,kHz (center frequency of human voice)~\cite{DigiCoding}\cite{DigiAudio}.
+
+\item Masking effects -- an otherwise audible sound can be masked by another sound and become inaudible.
+Two aspects of masking effect are spectral masking and temporal masking~\cite{ASP}.\label{itm:masking-effects}
+
+Spectral masking (also called simultaneous masking) can be observed when masker and maskee sounds are presented simultaneously. For example, presence of loud tone at 1\,kHz can make quieter tone at 1.2\,kHz inaudible.
+
+Temporal masking is observed when presence of masker makes sounds preceding the onset and following the offset inaudible. The power of temporal masking tends to decrease with time from onset/offset of masker.
+
+\item Missing fundamental -- humans tend to perceive pitch of $f$ when hearing harmonic series $2f, 3f, 4f ...$
+\end{enumerate}
+
+\subsection{Bark scale}
+
+Bark is a psychoacoustic scale named after Heinrich Barkhausen, who proposed first subjective measurement of loudness.
+
+The scale divides human hearing range into 24 critical bands~\cite{Bark} (see Figure \ref{fig:bark-table}).
+It makes working with psychoacoustic models easier by approximating the curve of absolute threshold of hearing with constant~(see Figure \ref{fig:ath-bark}).
+
+Equation \ref{eq:hz-to-bark} is used to convert frequency in Hertz to Bark~\cite{Bark}.
+
+\begin{equation}
+\label{eq:hz-to-bark}
+\textrm{bark} = 13\arctan(0.00076f) + 3.5\arctan((\frac{f}{7500})^{2})
+\end{equation}
+
+\subsection{Psychoacoustic models}
+\label{subsec:psychoacoustic-model}
+
+Psychoacoustic models can be used to detect inaudible (masked) components of a sound. Their main application is data compression~\cite{MPEG}.
+
+An example of psychoacoustic model introduced in~\cite{WAVS} is presented. This model exploits spectral masking effects.
+
+\begin{enumerate}
+\item for a given masker sound, power spectrum is obtained using FFT~[\ref{subsec:fft}]
+\item tone or noise maskers are identified within masker sound
+\item based on identified maskers, masking threshold is calculated for desired frequency.
+\end{enumerate}
+
+A frequency component $k$ of frequency $f$ with power $P_{k}$ is considered a tone if:
+\begin{enumerate}
+\item it is a local maximum, i.e. $P_{k-1} < P_{k} > P_{k+1}$
+\item it is at least 7dB greater than frequency components in its neighborhood, where neighborhood is:
+  \begin{itemize}
+  \item $P_{k-2}, \ldots, P_{k+2}$ if $f < \textrm{5.5\,kHz}$
+  \item $P_{k-3}, \ldots, P_{k+3}$ if $\textrm{5.5\,kHz} \leq f < \textrm{11\,kHz}$
+  \item $P_{k-6}, \ldots, P_{k+6}$ if $f \geq \textrm{11\,kHz}$
+  \end{itemize}
+\end{enumerate}
+
+To identify noise maskers, for each critical band~(\ref{fig:bark-table}), components which are not in neighborhood of a tone are added and placed at geometric mean location within the critical band.
+
+Masking level of frequency component $i$ on component $j$ is defined by equation \ref{eq:masking-tone} for tones and \ref{eq:masking-noise} for noises.
+
+\begin{equation}
+\textrm{mask}(i, j) = P_{j} - 0.275 z(j) + S(i, j) - 6.025\,\textrm{[dB]}
+\label{eq:masking-tone}
+\end{equation}
+
+\begin{equation}
+\textrm{mask}(i, j) = P_{j} - 0.175 z(j) + S(i, j) - 2.025\,\textrm{[dB]}
+\label{eq:masking-noise}
+\end{equation}
+
+where $z$ is a function converting component frequency to bark scale~(see equation \ref{eq:hz-to-bark}) and $S$ is spreading function defined in equation~\ref{eq:spreading}.
+
+\begin{equation}
+S(i, j) = \left\{
+  \begin{array}{l l}
+  17 \delta z -0.4 P_{j} + 11 & \quad \textrm{if $-3 \leq \delta z < -1$}\\
+  (0.4P_{j} + 6) \delta z & \quad \textrm{if $-1 \leq \delta z < 0$}\\
+  -17 \delta z & \quad \textrm{if $0 \leq \delta z < 1$}\\
+  (0.15 P_{j} -17) \delta z - 0.15 P_{j} & \quad \textrm{if $1 \leq \delta z < 8$}
+  \end{array}
+\right.
+\label{eq:spreading}
+\end{equation}
+
+where $\delta z = z(i) - z(j)$.
+
+% TODO: graphs
+
+Finally, masking threshold for component $k$ can be calculated by adding absolute threshold of hearing $\textrm{ath}(k)$ and masking levels of individual tone/noise maskers.
+
+\begin{equation}
+\textrm{threshold}(k) = 10\log_{10}(10^{\textrm{ath}(k)/10} + \sum_{i} 10^{\textrm{mask}(i, k)/10} )\,\textrm{[dB]}
+\end{equation}
+
+\begin{figure}[h]
+  \centering
+  \begin{tabular} { | c | c | c | c | }
+  \hline
+  Number & Center frequency (Hz) & Cut-off frequency (Hz) & Bandwidth (Hz) \\
+  \hline
+  1 & 50 & 100 & 80 \\
+  \hline
+  2 & 150 & 200 & 100 \\
+  \hline
+  3 & 250 & 300 & 100 \\
+  \hline
+  4 & 350 & 400 & 100 \\
+  \hline
+  5 & 450 & 510 & 110 \\
+  \hline
+  6 & 570 & 630 & 120 \\
+  \hline
+  7 & 700 & 770 & 140 \\
+  \hline
+  8 & 840 & 920 & 150 \\
+  \hline
+  9 & 1000 & 1080 & 160 \\
+  \hline
+  10 & 1170 & 1270 & 190 \\
+  \hline
+  11 & 1370 & 1480 & 210 \\
+  \hline
+  12 & 1600 & 1720 & 240 \\
+  \hline
+  13 & 1850 & 2000 & 280 \\
+  \hline
+  14 & 2150 & 2320 & 320 \\
+  \hline
+  15 & 2500 & 2700 & 380 \\
+  \hline
+  16 & 2900 & 3150 & 450 \\
+  \hline
+  17 & 3400 & 3700 & 550 \\
+  \hline
+  18 & 4000 & 4400 & 700 \\
+  \hline
+  19 & 4800 & 5300 & 900 \\
+  \hline
+  20 & 5800 & 6400 & 1100 \\
+  \hline
+  21 & 7000 & 7700 & 1300 \\
+  \hline
+  22 & 8500 & 9500 & 1800 \\
+  \hline
+  23 & 10500 & 12000 & 2500 \\
+  \hline
+  24 & 13500 & 15500 & 3500 \\
+  \hline
+  \end{tabular}
+  \caption[Critical bands of Bark scale]{Critical bands of Bark scale. Source:~\cite{Bark}}
+  \label{fig:bark-table}
+\end{figure}
+
+\begin{figure}[p]
+  \centering
+  \includegraphics[width=\linewidth]{figures/ath}
+  \caption{Absolute Threshold of Hearing on hertz scale and Bark scale}
+  \label{fig:ath-bark}
+\end{figure}
+
+\begin{figure}[p]
+  \centering
+  \includegraphics[width=\linewidth]{figures/equal-loudness-contour}
+  \caption[Equal loudness contour]{Equal loudness contour\newline Source: \url{http://en.wikipedia.org}}
+  \label{fig:equal-loudness}
+\end{figure}
+

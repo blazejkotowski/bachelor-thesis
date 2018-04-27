@@ -1,0 +1,216 @@
+\chapter{Solution}
+\label{chap:solution}
+
+\section{Overview}
+
+The proposed solution is to transmit payload data using nine sinusoidal signals hidden in host signal (eight carrier signals and one synchronization signal). Two algorithms are required: one for sound synthesis and one for recording analysis.
+
+The synthesis algorithm:
+\begin{enumerate}
+\item splits payload data into frames
+\item uses frame bytes to modulate carrier signals, utilizing DBPSK~[\ref{subsec:dbpsk}]
+\item adjusts amplitude of data signal using a psychoacoustic model
+\item filters host signal, removing frequencies around data signal
+\item adds data signal to filtered host signal
+\end{enumerate}
+
+The analysis algorithm:
+\begin{enumerate}
+\item demodulates the recorded signal into a stream of bytes
+\item uses a frame detection algorithm to extract frame data
+\item for each frame, applies error correction and outputs the result bytes
+\end{enumerate}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[auto,node distance=1cm,>=stealth']
+\tikzset{
+block/.style= {draw, rectangle, minimum height=2em,minimum width=4em},
+textblock/.style= {minimum height=2em,minimum width=4em},
+sum/.style = {draw, circle},
+oscillator/.style = {draw, circle},
+input/.style  = {coordinate},
+output/.style = {coordinate}
+}
+
+\node [textblock](payload) {payload};
+\node [block, right = 1cm of payload](framing) {encoder};
+\node [block, below = 1cm of framing, minimum height = 18em](modulator) {modulator};
+
+\node [oscillator, left = 1cm of modulator, align = center](oscillator4) {$\sim$};
+\node [oscillator, above = 0.1cm of oscillator4](oscillator3) {$\sim$};
+\node [oscillator, above = 0.1cm of oscillator3](oscillator2) {$\sim$};
+\node [oscillator, above = 0.1cm of oscillator2](oscillator1) {$\sim$};
+\node [oscillator, above = 0.1cm of oscillator1](oscillator0) {$\sim$};
+\node [oscillator, below = 0.1cm of oscillator4](oscillator5) {$\sim$};
+\node [oscillator, below = 0.1cm of oscillator5](oscillator6) {$\sim$};
+\node [oscillator, below = 0.1cm of oscillator6](oscillator7) {$\sim$};
+\node [oscillator, below = 0.1cm of oscillator7](oscillator8) {$\sim$};
+
+\node [textblock, below = 1cm of oscillator8](host) {host};
+\node [block, right = 3.25cm of host](filter) {filter};
+\node [block, above = 1cm of filter, text centered, text width = 2.5cm](psychmodel) {psychoacoustic model};
+\node [sum, right = 1cm of modulator](applymodel) {$\times$};
+\node [sum, right = 1cm of applymodel](sumwithhost) {$+$};
+\node [block, right = 3cm of sumwithhost](demodulator) {demodulator};
+\node [block, below = 1cm of demodulator](framerecovery) {frame recovery};
+\node [textblock, below = 1cm of framerecovery](outputpayload) {payload};
+
+\draw [->] (payload) -- (framing);
+\draw [->] (framing) -- (modulator);
+\draw [->] (oscillator0) -- (modulator.west|-oscillator0);
+\draw [->] (oscillator1) -- (modulator.west|-oscillator1);
+\draw [->] (oscillator2) -- (modulator.west|-oscillator2);
+\draw [->] (oscillator3) -- (modulator.west|-oscillator3);
+\draw [->] (oscillator4) -- (modulator.west|-oscillator4);
+\draw [->] (oscillator5) -- (modulator.west|-oscillator5);
+\draw [->] (oscillator6) -- (modulator.west|-oscillator6);
+\draw [->] (oscillator7) -- (modulator.west|-oscillator7);
+\draw [->] (oscillator8) -- (modulator.west|-oscillator8);
+\draw [->] (modulator) -- (applymodel);
+
+\draw [->] (host) -- (filter);
+\draw [->] (filter) -- (psychmodel);
+\draw [->] (filter) -| (sumwithhost);
+\draw [->] (psychmodel.north-|applymodel) -| (applymodel);
+
+\draw [->] (applymodel) -- (sumwithhost);
+
+\draw [->] (sumwithhost) -- node {sound} (demodulator);
+
+\draw [->] (demodulator) -- (framerecovery);
+\draw [->] (framerecovery) -- (outputpayload);
+\end{tikzpicture}
+\caption{Block diagram of proposed solution}
+\label{fig:solution-diagram}
+\end{figure}
+
+\section{Synthesis algorithm}
+
+The signal synthesis algorithm has some configurable parameters:
+
+\begin{itemize}
+\item d -- duration of signal which encodes single byte (seconds)
+\item fs -- sampling rate
+\item sync -- synchronization signal frequency (Hertz)
+\item carriers -- array of carrier signals frequencies (in Hertz)
+\end{itemize}
+
+\subsection{Data frame}
+
+To ensure robust payload decoding in spite of transmission errors, data is encoded in frames consisting of 24 bytes:
+
+\begin{itemize}
+\item preamble -- 2 bytes
+\item payload -- 16 bytes
+\item error correction data -- 6 bytes
+\end{itemize}
+
+% TODO: frame visualization
+A preamble is used in frame recovery algorithm~[\ref{sec:frame-recovery}] to detect frame beginning. It consists of 2 ASCII synchronous idle characters (\texttt{0x16}).
+\texttt{0x} notation denotes a byte in hexadecimal format.
+
+Error correction data is calculated from payload using Reed-Solomon~[\ref{subsec:reedsolomon}]~code.
+
+\subsection{Carrier modulation}
+
+Single carrier signal is a sine wave, modulated by a stream of bits using differential binary phase shift keying~[\ref{subsec:dbpsk}].
+
+DBPSK has the advantages over other modulation methods for audio domain:~\cite{Applidium}
+
+\begin{itemize}
+\item more robust and resilient to noise than amplitude modulation
+\item uses less bandwidth than frequency modulation, meaning narrower band will be removed from host signal
+\item does not require reference signal in demodulator
+\end{itemize}
+
+However, sudden phase transitions required by DBPSK cause audible parasitic effects ("clicking"). To mitigate that, the parts of the signal at transition time are multiplied by cosine window.
+
+\begin{figure}[h]
+  \includegraphics[width=\linewidth]{figures/phase-transition}
+  \caption{Sudden phase transition of $\pi$}
+  \label{fig:phase-transition}
+\end{figure}
+
+\begin{figure}[h]
+  \includegraphics[width=\linewidth]{figures/smooth-phase-transition}
+  \caption{Smooth phase transition of $\pi$}
+  \label{fig:smooth-phase-transition}
+\end{figure}
+
+\subsection{Byte transmission}
+
+Total of nine sine signals are transmitted simultaneously. Eight of them each encode a single bit of a byte. The remaining signal is a synchronization signal, modulated by stream of binary ones, is used for detecting byte start\,/\,end.
+
+% TODO: figure of synchronization signal
+
+\subsection{Insetting in host signal}
+
+Insetting carrier signal in host signal consists of 4 steps:
+
+\begin{enumerate}
+\item host signal is filtered with bandstop filter, removing frequencies around carrier signal
+\item for each window, masking threshold for carrier signal is calculated using psychoacoustic model described in~[\ref{subsec:psychoacoustic-model}]
+\item amplitude of carrier signal is multiplied by value under masking threshold
+\item carrier signal is added to filtered host signal
+\end{enumerate}
+
+\section{Analysis algorithm}
+
+Analysis algorithm shares configuration parameters with synthesis algorithm, and can further be parameterized with:
+
+\begin{itemize}
+\item ws -- window size for analysis (samples)
+\end{itemize}
+
+Each ws consecutive recorded samples are analyzed by analysis algorithm.
+
+\subsection{Carrier demodulation}
+
+A phase reading is obtained for each of the carrier frequencies and synchronization frequency.
+
+For each frequency:
+\begin{enumerate}
+\item recorded frame is filtered with a bandpass filter centered at that frequency and multiplied by Hanning window % TODO: ref
+\item phase shift relative to beginning of frame is calculated using Goertzel algorithm~[\ref{subsec:goertzel}]
+\item absolute phase shift ($|\varphi|$) is obtained by calculating phase offset ($\delta\varphi$) of current frame and subtracting it from relative phase ($\varphi$).
+\end{enumerate}
+
+\begin{equation}
+\delta\varphi = 2\pi(\frac{\textrm{framestart} \cdot \textrm{frequency}}{\textrm{fs}} \pmod{1.0})
+\end{equation}
+
+Where framestart is the index of the first sample of a frame in a stream of all recorded samples, and fs is sampling rate.
+
+\begin{equation}
+|\varphi| = \varphi - \delta\varphi
+\end{equation}
+
+When the synchronization signal has stable phase for the predefined number of readings (rpb -- readings per byte), it signals a byte transmission.
+Phase is considered stable when standard deviation of rpb previous readings is below $\pi/5$.
+
+\begin{equation}
+\textrm{rpb} = \lfloor\frac{\textrm{fs} \cdot \textrm{d}}{\textrm{ws}}\rfloor
+\end{equation}
+
+When byte transmission occurs, previous rpb bit carrier phase readings are averaged and saved. Then the averages are compared to previous averages and if difference of $\pi$ is detected, a binary 1 is decoded. Otherwise, binary 0 is decoded.
+
+Eight bits decoded from carrier signals are then combined to form a single byte, which gets forwarded to frame recovery algorithm.
+
+\subsection{Frame recovery}
+\label{sec:frame-recovery}
+
+A simple frame recovery algorithm scans the byte stream for preamble bytes.
+However, since transmission error might have occurred and preamble might be scrambled, the algorithm has to evaluate each consecutive pair of bytes as a candidate for being a preamble.
+
+It assigns a score for each position in bit stream, calculated as follows:
+
+\begin{equation}
+\textrm{score} = 1 - \frac{\textrm{pop(bit0 xor \texttt{0x16})} + \textrm{pop(bit1 xor \texttt{0x16})}}{16}
+\end{equation}
+
+(where pop is a function returning number of set bits in a byte).
+
+Score of 1 means exact preamble is detected. However, if no preamble position is found, the algorithm waits for next 24 bytes to calculate the score of a position a frame size bytes ahead. If that score is large enough, previous position is selected as frame beginning.
+
+Once beginning of frame is identified and all frame bytes are received, the algorithm extracts payload data, tries to apply Reed-Solomon error correction to correct any transmission errors, and returns decoded part of payload data.

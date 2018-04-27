@@ -1,0 +1,59 @@
+% Szkielet dla pracy inżynierskiej pisanej w języku angielskim.
+
+\documentclass[english,bachelor,a4paper,oneside]{ppfcmthesis}
+
+\usepackage[utf8]{inputenc}
+\usepackage[OT4]{fontenc}
+\usepackage{minted}
+\usepackage{tikz}
+\usetikzlibrary{calc,fit,arrows,positioning}
+\usepackage{graphicx}
+\usepackage{caption}
+
+% Authors here.
+\author{%
+   Błażej Kotowski \album{106603} \and
+   Tomasz Pewiński \album{106638}}
+\title{Applications for insetting and recovery of hidden information audio signals}        % Note how we protect the final title phrase from breaking
+\ppsupervisor{prof.~dr hab.~inż.~Adam Dąbrowski} % Your supervisor comes here.
+\ppyear{2015}                                         % Year of final submission (not graduation!)
+
+\begin{document}
+
+% Front matter starts here
+\frontmatter\pagestyle{empty}%
+
+\maketitle\cleardoublepage
+
+% Blank info page for "karta dyplomowa"
+\begin{center}
+\noindent\makebox[\textwidth]{\includegraphics[width=\paperwidth]{figures/thesis-page}}
+\end{center}
+\vfill\cleardoublepage%
+
+% Table of contents.
+\pagenumbering{gobble}\pagestyle{ppfcmthesis}%
+\tableofcontents* \cleardoublepage%
+
+% Main content of your thesis starts here.
+\mainmatter%
+\input{chapters/01-introduction}
+\input{chapters/02-theory}
+\input{chapters/03-solution}
+\input{chapters/04-implementation}
+\input{chapters/05-tests}
+\input{chapters/06-summary}
+
+% All appendices and extra material, if you have any.
+\cleardoublepage\appendix%
+
+\listoffigures
+
+% Bibliography (books, articles) starts here.
+\addtocontents{toc}{\protect\enlargethispage{\baselineskip}} % HACK: prevent table of contents from spilling to second page
+\bibliographystyle{alpha}{\raggedright\sloppy\small\bibliography{bibliography}}
+
+% Colophon is a place where you should let others know about copyrights etc.
+\ppcolophon
+
+\end{document}
